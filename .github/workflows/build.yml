@@ -29,6 +29,8 @@ jobs:
 
       - name: Show toolchain versions
         run: |
+          export DEVKITA64="$DEVKITPRO/devkitA64"
+          export PATH="$DEVKITA64/bin:$DEVKITPRO/portlibs/switch/bin:$PATH"
           echo "DEVKITPRO=$DEVKITPRO"
           echo "DEVKITA64=$DEVKITA64"
           which aarch64-none-elf-gcc
@@ -36,7 +38,10 @@ jobs:
           dkp-pacman -Q switch-sdl2 switch-sdl2_image switch-sdl2_mixer switch-sdl2_ttf switch-tools
 
       - name: Build sdl_demo
-        run: make -C sdl_demo
+        run: |
+          export DEVKITA64="$DEVKITPRO/devkitA64"
+          export PATH="$DEVKITA64/bin:$DEVKITPRO/portlibs/switch/bin:$PATH"
+          make -C sdl_demo
 
       - name: Upload sdl_demo.nro
         uses: actions/upload-artifact@v4
