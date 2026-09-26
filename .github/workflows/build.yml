@@ -22,7 +22,7 @@ jobs:
       - name: Install devkitPro packages
         # dkp-pacman is the package manager inside the devkitPro containers
         run: |
-          dkp-pacman -Syu --noconfirm --needed \
+          dkp-pacman -S --noconfirm --needed \
             switch-dev devkitA64 libnx switch-tools \
             switch-sdl2 switch-sdl2_image switch-sdl2_mixer switch-sdl2_ttf \
             switch-mesa switch-libdrm_nouveau switch-pkg-config
