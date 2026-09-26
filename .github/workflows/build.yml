@@ -49,3 +49,19 @@ jobs:
           name: sdl_demo-nro
           path: sdl_demo/sdl_demo.nro
           if-no-files-found: error
+
+      # P2 / R11: does SDL2 give us a GLES2 (EGL) context on the Switch?
+      # Separate target and separate artifact so a failure here cannot be
+      # confused with sdl_demo's P1 gate.
+      - name: Build gl_probe (R11)
+        run: |
+          export DEVKITA64="$DEVKITPRO/devkitA64"
+          export PATH="$DEVKITA64/bin:$DEVKITPRO/portlibs/switch/bin:$PATH"
+          make -C gl_probe
+
+      - name: Upload gl_probe.nro
+        uses: actions/upload-artifact@v4
+        with:
+          name: gl_probe-nro
+          path: gl_probe/gl_probe.nro
+          if-no-files-found: error
