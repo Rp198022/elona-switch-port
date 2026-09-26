@@ -174,12 +174,20 @@ int main(int argc, char **argv)
 
     spawn_square();
 
-    char  status[256] = { 0 };
+    char  status1[256] = { 0 };
+    char  status2[256] = { 0 };
+    char  status3[256] = { 0 };
+    char  status4[256] = { 0 };
     char  last_btn[64] = "none";
     int   last_btn_idx = -1;
-    SDL_Texture *t_status = NULL;
-    int   status_w = 0, status_h = 0;
+    SDL_Texture *t_status1 = NULL, *t_status2 = NULL;
+    SDL_Texture *t_status3 = NULL, *t_status4 = NULL;
+    int   w1 = 0, h1 = 0, w2 = 0, h2 = 0, w3 = 0, h3 = 0, w4 = 0, h4 = 0;
     Uint32 status_next = 0;
+
+    /* T1.5 probe: count each event family separately, so the runtime choice of
+       which one actually drives input can be verified on hardware. */
+    int   evt_ctrl = 0, evt_joy = 0;
 
     if (beep) Mix_PlayChannel(-1, beep, 0);   /* prove audio immediately on boot */
 
@@ -192,6 +200,7 @@ int main(int argc, char **argv)
             if (ev.type == SDL_QUIT) exit_requested = 1;
 
             if (ev.type == SDL_CONTROLLERBUTTONDOWN) {
+                evt_ctrl++;
                 last_btn_idx = ev.cbutton.button;
                 switch (ev.cbutton.button) {
                     case SDL_CONTROLLER_BUTTON_A: snprintf(last_btn, sizeof last_btn, "A"); spawn = 1; break;
@@ -204,14 +213,21 @@ int main(int argc, char **argv)
             }
 
             if (ev.type == SDL_JOYBUTTONDOWN) {
-                last_btn_idx = ev.jbutton.button;
-                switch (ev.jbutton.button) {
-                    case JOY_A: snprintf(last_btn, sizeof last_btn, "raw 0 (A pos)");  spawn = 1; break;
-                    case JOY_B: snprintf(last_btn, sizeof last_btn, "raw 1 (B pos)");  spawn = 1; if (beep) Mix_PlayChannel(-1, beep, 0); break;
-                    case JOY_X: snprintf(last_btn, sizeof last_btn, "raw 2 (X pos)");  spawn = 1; break;
-                    case JOY_Y: snprintf(last_btn, sizeof last_btn, "raw 3 (Y pos)");  spawn = 1; break;
-                    case JOY_PLUS: snprintf(last_btn, sizeof last_btn, "raw 10 (+)");  exit_requested = 1; break;
-                    default: snprintf(last_btn, sizeof last_btn, "raw %d", ev.jbutton.button); break;
+                evt_joy++;
+                /* SDL2 emits BOTH SDL_CONTROLLERBUTTONDOWN and SDL_JOYBUTTONDOWN for a
+                   controller-mapped device on Switch. Acting on both spawned two
+                   squares per press, so raw joystick is only acted on when no
+                   GameController could be opened (the fallback this demo intends). */
+                if (!gc) {
+                    last_btn_idx = ev.jbutton.button;
+                    switch (ev.jbutton.button) {
+                        case JOY_A: snprintf(last_btn, sizeof last_btn, "raw 0 (A pos)");  spawn = 1; break;
+                        case JOY_B: snprintf(last_btn, sizeof last_btn, "raw 1 (B pos)");  spawn = 1; if (beep) Mix_PlayChannel(-1, beep, 0); break;
+                        case JOY_X: snprintf(last_btn, sizeof last_btn, "raw 2 (X pos)");  spawn = 1; break;
+                        case JOY_Y: snprintf(last_btn, sizeof last_btn, "raw 3 (Y pos)");  spawn = 1; break;
+                        case JOY_PLUS: snprintf(last_btn, sizeof last_btn, "raw 10 (+)");  exit_requested = 1; break;
+                        default: snprintf(last_btn, sizeof last_btn, "raw %d", ev.jbutton.button); break;
+                    }
                 }
             }
 
@@ -269,25 +285,41 @@ int main(int argc, char **argv)
         tr.y = y;
         if (t_img)   { SDL_QueryTexture(t_img, NULL, NULL, &tr.w, &tr.h); SDL_RenderCopy(ren, t_img, NULL, &tr); y += tr.h + 4; }
 
-        /* dynamic status line, refreshed twice per second */
+        /* dynamic status, refreshed twice per second. Split across four short lines:
+           the previous single line was ~1650px wide on an 800px logical canvas, so
+           its tail (squares / audio / font / frames) was clipped at the screen edge. */
         Uint32 now = SDL_GetTicks();
         if (now >= status_next) {
             status_next = now + 500;
-            snprintf(status, sizeof status,
-                     "%s  |  pad: %s  |  last: %s (#%d)  |  squares: %d  |  audio: %s  |  font: %s  |  frames: %d",
-                     backend,
-                     pad_name ? pad_name : "none",
-                     last_btn, last_btn_idx,
-                     square_count,
-                     beep ? "beep.wav ok" : "FAILED",
-                     font ? "font.otf ok" : "FAILED",
-                     frames);
-            if (t_status) { SDL_DestroyTexture(t_status); t_status = NULL; }
-            if (font) t_status = make_text(ren, font, status, dim, &status_w, &status_h);
+            snprintf(status1, sizeof status1, "%s  |  pad: %s",
+                     backend, pad_name ? pad_name : "none");
+            snprintf(status2, sizeof status2, "last: %s (#%d)  |  squares: %d  |  frames: %d",
+                     last_btn, last_btn_idx, square_count, frames);
+            snprintf(status3, sizeof status3, "audio: %s  |  font: %s",
+                     beep ? "beep.wav ok" : "FAILED", font ? "font.otf ok" : "FAILED");
+            snprintf(status4, sizeof status4, "btn events: controller=%d  rawjoystick=%d",
+                     evt_ctrl, evt_joy);
+            if (t_status1) { SDL_DestroyTexture(t_status1); t_status1 = NULL; }
+            if (t_status2) { SDL_DestroyTexture(t_status2); t_status2 = NULL; }
+            if (t_status3) { SDL_DestroyTexture(t_status3); t_status3 = NULL; }
+            if (t_status4) { SDL_DestroyTexture(t_status4); t_status4 = NULL; }
+            if (font) {
+                t_status1 = make_text(ren, font, status1, dim, &w1, &h1);
+                t_status2 = make_text(ren, font, status2, dim, &w2, &h2);
+                t_status3 = make_text(ren, font, status3, dim, &w3, &h3);
+                t_status4 = make_text(ren, font, status4, dim, &w4, &h4);
+            }
         }
-        if (t_status) {
-            SDL_Rect sr = { 12, LOGICAL_H - status_h - 10, status_w, status_h };
-            SDL_RenderCopy(ren, t_status, NULL, &sr);
+        {
+            int sy = LOGICAL_H - (h1 + h2 + h3 + h4) - 3 * 4 - 10;
+            SDL_Rect r1 = { 12, sy, w1, h1 };
+            SDL_Rect r2 = { 12, sy + h1 + 4, w2, h2 };
+            SDL_Rect r3 = { 12, sy + h1 + h2 + 8, w3, h3 };
+            SDL_Rect r4 = { 12, sy + h1 + h2 + h3 + 12, w4, h4 };
+            if (t_status1) SDL_RenderCopy(ren, t_status1, NULL, &r1);
+            if (t_status2) SDL_RenderCopy(ren, t_status2, NULL, &r2);
+            if (t_status3) SDL_RenderCopy(ren, t_status3, NULL, &r3);
+            if (t_status4) SDL_RenderCopy(ren, t_status4, NULL, &r4);
         }
 
         SDL_RenderPresent(ren);
@@ -301,7 +333,10 @@ int main(int argc, char **argv)
     if (t_jp)     SDL_DestroyTexture(t_jp);
     if (t_cn)     SDL_DestroyTexture(t_cn);
     if (t_img)    SDL_DestroyTexture(t_img);
-    if (t_status) SDL_DestroyTexture(t_status);
+    if (t_status1) SDL_DestroyTexture(t_status1);
+    if (t_status2) SDL_DestroyTexture(t_status2);
+    if (t_status3) SDL_DestroyTexture(t_status3);
+    if (t_status4) SDL_DestroyTexture(t_status4);
     if (bmp_tex)  SDL_DestroyTexture(bmp_tex);
     if (font)     TTF_CloseFont(font);
     if (beep)     { Mix_HaltChannel(-1); Mix_FreeChunk(beep); }
