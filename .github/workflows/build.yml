@@ -1,0 +1,46 @@
+name: Build NRO
+
+# P1 / T1.4 - cross-compile the .nro on every push so the .nro can be downloaded
+# from the Actions artifact instead of being built locally.
+#
+# The container image is the official devkitPro one (devkitPro/docker :: devkita64).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install devkitPro packages
+        # dkp-pacman is the package manager inside the devkitPro containers
+        run: |
+          dkp-pacman -Syu --noconfirm --needed \
+            switch-dev devkitA64 libnx switch-tools \
+            switch-sdl2 switch-sdl2_image switch-sdl2_mixer switch-sdl2_ttf \
+            switch-mesa switch-libdrm_nouveau pkg-config
+
+      - name: Show toolchain versions
+        run: |
+          echo "DEVKITPRO=$DEVKITPRO"
+          echo "DEVKITA64=$DEVKITA64"
+          which aarch64-none-elf-gcc
+          aarch64-none-elf-gcc --version | head -n 1
+          dkp-pacman -Q switch-sdl2 switch-sdl2_image switch-sdl2_mixer switch-sdl2_ttf switch-tools
+
+      - name: Build sdl_demo
+        run: make -C sdl_demo
+
+      - name: Upload sdl_demo.nro
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdl_demo-nro
+          path: sdl_demo/sdl_demo.nro
+          if-no-files-found: error

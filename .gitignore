@@ -1,0 +1,33 @@
+# ---------------------------------------------------------------------------
+# COMPLIANCE: this repo contains engine/tooling code ONLY.
+# Elona / Elona+ game assets (graphics, audio, maps, data, .ax bytecode, exes)
+# must NEVER be committed. The user copies them from their own PC copy to the
+# SD card. See PLAN.md section 7.
+# ---------------------------------------------------------------------------
+assets/
+*.7z
+*.zip
+*.tar.gz
+*.ax
+*.hpi
+elona*.exe
+hmm.dll
+hspda.dll
+hspext_ext.dll
+hspinet.dll
+hspsock.dll
+exrand.dll
+elona.dll
+
+# build output
+build/
+*.nro
+*.nacp
+*.elf
+*.nsp
+*.nso
+*.npdm
+*.map
+
+# tools (binary blobs fetched during the audit)
+tools/7zr.exe
