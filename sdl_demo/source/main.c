@@ -25,6 +25,7 @@
 #include <unistd.h>     /* chdir() */
 
 #include <switch.h>
+#include <switch/runtime/nxlink.h>
 
 #include <SDL.h>
 #include <SDL_image.h>
@@ -86,6 +87,18 @@ static void spawn_square(void)
 int main(int argc, char **argv)
 {
     (void)argc; (void)argv;
+
+    /* T1.5: set up the nxlink stdout channel. libnx does NOT redirect stdout on
+       its own - the application has to call nxlinkStdio() for printf() to reach
+       the nxlink host. When the demo is launched normally from hbmenu there is no
+       nxlink host and this simply fails, which is fine: the fd is only closed at
+       teardown. */
+    socketInitializeDefault();
+    int nxlink_fd = nxlinkStdio();
+
+    /* unconditional startup log, so the nxlink stdout channel can be verified */
+    printf("sdl_demo: startup, stdout channel ok\n");
+    fflush(stdout);
 
     romfsInit();
     chdir("romfs:/");
@@ -348,5 +361,7 @@ int main(int argc, char **argv)
     IMG_Quit();
     SDL_Quit();
     romfsExit();
+    if (nxlink_fd >= 0) close(nxlink_fd);
+    socketExit();
     return 0;
 }
