@@ -25,7 +25,7 @@ jobs:
           dkp-pacman -Syu --noconfirm --needed \
             switch-dev devkitA64 libnx switch-tools \
             switch-sdl2 switch-sdl2_image switch-sdl2_mixer switch-sdl2_ttf \
-            switch-mesa switch-libdrm_nouveau pkg-config
+            switch-mesa switch-libdrm_nouveau switch-pkg-config
 
       - name: Show toolchain versions
         run: |
